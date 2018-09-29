@@ -73,7 +73,7 @@ namespace BLEExplorer.Pages
             else if (true)
 				characteristicsPage = new CharacteristicDetail_TISensor (adapter, device, service, characteristic);
             else */
-				characteristicsPage = new CharacteristicDetail (adapter, device, service, characteristic);
+				characteristicsPage = new CharacteristicDetail (adapter, device);
 
 			Navigation.PushAsync(characteristicsPage);
 

@@ -31,18 +31,25 @@ namespace Robotics.Mobile.Core.Bluetooth.LE
 			this.gattCallback = gattCallback;
 			this.rssi = rssi;
 
-			// when the services are discovered on the gatt callback, cache them here
-			if (this.gattCallback != null) {
-				this.gattCallback.ServicesDiscovered += (s, e) => {
-					var services = this.gatt.Services;
-					this.services = new List<IService> ();
-					foreach (var item in services) {
-						this.services.Add (new Service (item, this.gatt, this.gattCallback));
-					}
-					this.ServicesDiscovered (this, e);
-				};
-			}
-		}
+            // when the services are discovered on the gatt callback, cache them here
+            if (this.gattCallback != null)
+            {
+                this.gattCallback.ServicesDiscovered += (s, e) =>
+                {
+                    this.services = new List<IService>();
+
+                    if (this.gatt.Services != null)
+                    {
+                        var services = this.gatt.Services;
+                        foreach (var item in services)
+                        {
+                            this.services.Add(new Service(item, this.gatt, this.gattCallback));
+                        }
+                    }
+                    this.ServicesDiscovered(this, e);
+                };
+            }
+        }
 
         public override Guid ID
         {

@@ -107,20 +107,22 @@ namespace Robotics.Mobile.Core.Bluetooth.LE
 
 			var device = new Device (bleDevice, null, null, rssi);
 
-            if (DeviceExistsInDiscoveredList(bleDevice) == false)
+            if (DeviceExistsInDiscoveredList(bleDevice) == false && device.Name!= null && device.Name.StartsWith("BLE"))
             {
                 discoveredDevices.Add(device);
-
                 // TODO: in the cross platform API, cache the RSSI
                 DeviceDiscovered(this, new DeviceDiscoveredEventArgs { Device = device });
+
+                StopScanningForDevices();
             }
-		}
+
+        }
 
 		protected bool DeviceExistsInDiscoveredList(BluetoothDevice device)
 		{
 			foreach (var d in discoveredDevices)
             {
-				if (device.Address == ((BluetoothDevice)d.NativeDevice).Address)
+				if (device.Address == ((BluetoothDevice)d.NativeDevice).Address)                     
 					return true;
 			}
 			return false;

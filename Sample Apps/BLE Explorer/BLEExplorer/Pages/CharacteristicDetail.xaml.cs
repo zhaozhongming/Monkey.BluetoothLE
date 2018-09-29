@@ -2,93 +2,146 @@
 using Robotics.Mobile.Core.Bluetooth.LE;
 using System.Diagnostics;
 using System.Linq;
+using System;
+using System.Collections.ObjectModel;
 
 namespace BLEExplorer.Pages
 {	
 	public partial class CharacteristicDetail : ContentPage
-	{	
-		//IAdapter adapter;
-		//IDevice device;
-		//IService service; 
-		ICharacteristic characteristic;
+	{
+        IAdapter _adapter;
+        IDevice _device;
+        IService _service;
+        ICharacteristic characteristicWrite;
+        ICharacteristic characteristicNotify;
+        ObservableCollection<IService> services = new ObservableCollection<IService>();
+        
+        const string sid = "0003abcd-0000-1000-8000-00805f9b0131";
+        static readonly Guid sguid = new Guid(sid);
 
-		public CharacteristicDetail (IAdapter adapter, IDevice device, IService service, ICharacteristic characteristic)
+        const string nid = "00031234-0000-1000-8000-00805F9B0130";
+        static readonly Guid nguid = new Guid(nid);
+        const string wid = "00031234-0000-1000-8000-00805F9B0131";
+        static readonly Guid wguid = new Guid(wid);
+
+        public CharacteristicDetail (IAdapter adapter, IDevice device)
 		{
-			InitializeComponent ();
+            _adapter = adapter;
+            _device = device;
 
-			this.characteristic = characteristic;
+            // when device is connected
+            adapter.DeviceConnected += AdapterDeviceConnected;
 
-            /*
-            if (characteristic.CanUpdate)
+            adapter.ConnectToDevice(device);
+
+            InitializeComponent();
+
+            btnSendAny.Clicked += BtnSendAny;
+            btnListData.Clicked += BtnListData;
+            btnStop.Clicked += BtnStopReading;
+            btnExit.Clicked += BtnExit;
+            btnReset.Clicked += BtnReset;
+            btnStart.Clicked += BtnStart;
+        }
+
+        void AdapterDeviceConnected(object sender, DeviceConnectionEventArgs e)
+        {
+            _device = e.Device; // do we need to overwrite this?
+
+            // when services are discovered
+            _device.ServicesDiscovered += (object se, EventArgs ea) =>
             {
-				characteristic.ValueUpdated += (s, e) => 
+                Debug.WriteLine("device.ServicesDiscovered");
+               
+                _service = _device.Services.Where(x => x.ID == sguid).FirstOrDefault();
+
+                //get the characteristic for notify and write
+                characteristicNotify = _service.Characteristics.Where(x => x.ID == nguid).FirstOrDefault();
+
+                if (characteristicNotify.CanUpdate)
                 {
-					Debug.WriteLine("characteristic.ValueUpdated");
+                    characteristicNotify.ValueUpdated += CharacteristicValueUpdated;
+                    characteristicNotify.StartUpdates();
+                }
 
-					Device.BeginInvokeOnMainThread( () => UpdateDisplay(characteristic) );
-				
-				};
-				characteristic.StartUpdates();
-			}
-            */
+                characteristicWrite =
+                    _service.Characteristics.Where(x => x.ID == wguid).FirstOrDefault();
+            };
 
-            btnTxRx.Clicked += (s, e) => Navigation.PushAsync(new TxRx(characteristic));
-		}
-
-		protected override async void OnAppearing ()
-		{
-			base.OnAppearing ();
-		
-			if (characteristic.CanRead) {
-				var c = await characteristic.ReadAsync();
-				UpdateDisplay(c);
-			}
-		}
-
-		protected override void OnDisappearing() 
-		{
-			base.OnDisappearing();
-
-            if (characteristic.CanUpdate) 
-				characteristic.StopUpdates();
-			
-		}
-		void UpdateDisplay (ICharacteristic c)
+            // start looking for services
+            _device.DiscoverServices();
+        }
+        private void CharacteristicValueUpdated(object sender, CharacteristicReadEventArgs e)
         {
-			Name.Text = c.Name;
+            string msg = string.Empty;
 
-			ID.Text = c.ID.PartialFromUuid ();
+            msg = new string(System.Text.Encoding.UTF8.GetChars(e.Characteristic.Value));
 
-			var s = (from i in c.Value select i.ToString ("X").PadRight(2, '0')).ToArray ();
-
-			RawValue.Text = string.Join (":", s);
-
-			if (c.ID == 0x2A37.UuidFromPartial ())
+            if (msg.EndsWith("OK")
+                || msg.EndsWith("***"))
             {
-				// heart rate
-				StringValue.Text = DecodeHeartRateCharacteristicValue (c.Value);
-				StringValue.TextColor = Color.Red;
-			}
-            else
-            {
-				StringValue.Text = c.StringValue;
-				StringValue.TextColor = Color.Default;
-			}
-		}
+                msg += "\r\n";
+            }
 
-		string DecodeHeartRateCharacteristicValue(byte[] data)
+            Device.BeginInvokeOnMainThread(() => entryReceived.Text += msg);
+        }
+
+        void BtnSendAny(object sender, System.EventArgs e)
         {
-			ushort bpm = 0;
-			if ((data [0] & 0x01) == 0)
+            var data = System.Text.Encoding.UTF8.GetBytes(" ");
+
+            if (characteristicWrite.CanWrite)
+                characteristicWrite.Write(data);
+        }
+
+        void BtnListData(object sender, System.EventArgs e)
+        {
+            var data = System.Text.Encoding.UTF8.GetBytes("L");
+
+            if (characteristicWrite.CanWrite)
+                characteristicWrite.Write(data);
+        }
+        void BtnExit(object sender, System.EventArgs e)
+        {
+            var data = System.Text.Encoding.UTF8.GetBytes("X");
+
+            if (characteristicWrite.CanWrite)
+                characteristicWrite.Write(data);
+        }
+
+        void BtnReset(object sender, System.EventArgs e)
+        {
+            var data = System.Text.Encoding.UTF8.GetBytes("R");
+
+            if (characteristicWrite.CanWrite)
+                characteristicWrite.Write(data);
+        }
+        void BtnStopReading(object sender, System.EventArgs e)
+        {
+            if (characteristicNotify.CanUpdate)
             {
-				bpm = data [1];
-			}
-            else
+                characteristicNotify.StopUpdates();
+                characteristicNotify.ValueUpdated -= CharacteristicValueUpdated;
+            }
+        }
+
+        void BtnStart(object sender, System.EventArgs e)
+        {
+            if (characteristicNotify.CanUpdate)
             {
-				bpm = (ushort)data [1];
-				bpm = (ushort)(((bpm >> 8) & 0xFF) | ((bpm << 8) & 0xFF00));
-			}
-			return bpm.ToString () + " bpm";
-		}
-	}
+                characteristicNotify.StartUpdates();
+                characteristicNotify.ValueUpdated += CharacteristicValueUpdated;
+            }
+        }
+
+        protected override void OnDisappearing()
+        {
+            base.OnDisappearing();
+            if (characteristicNotify.CanUpdate)
+            {
+                characteristicNotify.StopUpdates();
+                characteristicNotify.ValueUpdated -= CharacteristicValueUpdated;
+            }
+        }
+    }
 }

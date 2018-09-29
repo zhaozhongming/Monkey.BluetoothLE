@@ -4,11 +4,28 @@
 			 x:Class="BLEExplorer.Pages.CharacteristicDetail"
 			 Title="Characteristic">
 
-	<StackLayout>
-		<Label x:Name="Name" Text="-" />
-		<Label x:Name="ID" Text="-" />
-		<Label x:Name="RawValue" Text="-" />
-		<Label x:Name="StringValue" Text="-" />
-    <Button x:Name="btnTxRx" Text="TxRx" />
-	</StackLayout>
+    <Grid x:Name="MainGrid" Margin="4">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="1*" />
+            <ColumnDefinition Width="1*" />
+        </Grid.ColumnDefinitions>
+        
+        <StackLayout Grid.Row="0" Grid.Column="0">
+            <Button x:Name="btnSendAny" Text="Any Key" />
+            <Button x:Name="btnListData" Text="List Data" />
+            <Button x:Name="btnReset" Text="Reset" />
+        </StackLayout>
+        <StackLayout Grid.Row="0" Grid.Column="1">
+            <Button x:Name="btnStop" Text="Stop Reading" />
+            <Button x:Name="btnStart" Text="Start Reading" />
+            <Button x:Name="btnExit" Text="Exit" />
+        </StackLayout>
+        <ScrollView Orientation="Vertical"  Grid.Row="1" Grid.ColumnSpan="2">
+            <Label x:Name="entryReceived" />
+        </ScrollView>
+    </Grid>
 </ContentPage>

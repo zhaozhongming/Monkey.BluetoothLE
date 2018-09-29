@@ -11,8 +11,8 @@ namespace BLEExplorer.Pages
 	{	
 		IAdapter adapter;
 		IDevice device;
-
-		ObservableCollection<IService> services;
+        ICharacteristic characteristicNotify;
+        ObservableCollection<IService> services;
 
 		public ServiceList (IAdapter adapter, IDevice device)
 		{
@@ -78,9 +78,12 @@ namespace BLEExplorer.Pages
 				return;
 
 			var service = e.SelectedItem as IService;
-			var characteristicsPage = new CharacteristicList(adapter, device, service);
 
-			await Navigation.PushAsync(characteristicsPage);
+            characteristicNotify = service.Characteristics[0];
+
+            var characteristicsDetail = new CharacteristicDetail(adapter, device);
+
+			await Navigation.PushAsync(characteristicsDetail);
 
 			((ListView)sender).SelectedItem = null; // clear selection
 		}

@@ -6,6 +6,7 @@ namespace BLEExplorer.Pages
     public partial class TxRx : ContentPage
     {
         ICharacteristic characteristic;
+        ICharacteristic characteristicWrite;
         public TxRx(ICharacteristic characteristic)
         {
             InitializeComponent();
@@ -14,7 +15,7 @@ namespace BLEExplorer.Pages
 
             var result = characteristic.Properties & CharacteristicPropertyType.Notify;
 
-            if(characteristic.CanRead)
+            if(characteristic.CanRead || characteristic.CanUpdate)
             {
                 characteristic.StartUpdates();
                 characteristic.ValueUpdated += CharacteristicValueUpdated;
@@ -32,29 +33,41 @@ namespace BLEExplorer.Pages
         {
             var data = System.Text.Encoding.UTF8.GetBytes(entryMessage.Text);
 
-            if (characteristic.CanWrite)
-                characteristic.Write(data);
+
+            if (characteristicWrite.CanWrite)
+                characteristicWrite.Write(data);
         }
 
         private void CharacteristicValueUpdated(object sender, CharacteristicReadEventArgs e)
         {
             string msg = string.Empty;
 
-            if(switchShowAsText.IsToggled == true)
-            {
-                msg = new string(System.Text.Encoding.UTF8.GetChars(e.Characteristic.Value));
-            }
-            else
-            {
-                var count = e.Characteristic.Value.Length;
+            //if(switchShowAsText.IsToggled == true)
+            //{
+            //    msg = new string(System.Text.Encoding.UTF8.GetChars(e.Characteristic.Value));
+            //}
+            //else
+            //{
+            //    var count = e.Characteristic.Value.Length;
 
-                for (var i = 0; i < count; i++)
-                {
-                    msg += e.Characteristic.Value[i] + " ";
-                }
-            }
+            //    for (var i = 0; i < count; i++)
+            //    {
+            //        msg += e.Characteristic.Value[i] + " ";
+            //    }
+            //}
 
-            Device.BeginInvokeOnMainThread(()=> entryReceived.Text = msg);
+            msg = new string(System.Text.Encoding.UTF8.GetChars(e.Characteristic.Value)) + "\n";
+
+            Device.BeginInvokeOnMainThread(()=> entryReceived.Text += msg);
+        }
+
+        protected override void OnDisappearing()
+        {
+            base.OnDisappearing();
+
+            if (characteristic.CanUpdate)
+                characteristic.StopUpdates();
+
         }
     }
 }

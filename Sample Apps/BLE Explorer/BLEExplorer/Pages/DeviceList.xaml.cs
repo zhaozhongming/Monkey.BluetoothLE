@@ -12,6 +12,14 @@ namespace BLEExplorer.Pages
     {
         IAdapter adapter;
         ObservableCollection<IDevice> devices;
+        IDevice device;
+        //ICharacteristic characteristicNotify;
+        //ObservableCollection<IService> services;
+        //IService service;
+
+
+        //const string sid = "00031234-0000-1000-8000-00805F9B0130";
+        //static readonly Guid sguid = new Guid(sid);
 
         public DeviceList(IAdapter adapter)
         {
@@ -21,7 +29,7 @@ namespace BLEExplorer.Pages
             this.devices = new ObservableCollection<IDevice>();
 
             listView.ItemsSource = devices;
-
+            
             adapter.DeviceDiscovered += (object sender, DeviceDiscoveredEventArgs e) => Device.BeginInvokeOnMainThread(() => devices.Add(e.Device));
    
             adapter.ScanTimeoutElapsed += (sender, e) => 
@@ -40,16 +48,11 @@ namespace BLEExplorer.Pages
             if (((ListView)sender).SelectedItem == null)
                 return;
 
-            Debug.WriteLine(" xxxxxxxxxxxx OnItemSelected " + e.SelectedItem.ToString());
-
-            StopScanning();
-
             var device = e.SelectedItem as IDevice;
 
-            var servicePage = new ServiceList(adapter, device);
-          
-            // load services on the next page
-            await Navigation.PushAsync(servicePage);
+            var characteristicsDetail = new CharacteristicDetail(adapter, device);
+
+            await Navigation.PushAsync(characteristicsDetail);
 
             ((ListView)sender).SelectedItem = null; // clear selection
         }
