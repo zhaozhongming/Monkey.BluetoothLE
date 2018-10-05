@@ -16,12 +16,12 @@ namespace Robotics.Mobile.Core.Bluetooth.LE
 		/// 
 		/// TODO: consider wrapping the Gatt and Callback into a single object and passing that around instead.
 		/// </summary>
-		protected BluetoothGatt gatt;
+		public BluetoothGatt gatt;
 		/// <summary>
 		/// we also track this because of gogole's weird API. the gatt callback is where
 		/// we'll get notified when services are enumerated
 		/// </summary>
-		protected GattCallback gattCallback;
+		public GattCallback gattCallback;
 
 		public Device (BluetoothDevice nativeDevice, BluetoothGatt gatt, 
 			GattCallback gattCallback, int rssi) : base ()
@@ -34,21 +34,25 @@ namespace Robotics.Mobile.Core.Bluetooth.LE
             // when the services are discovered on the gatt callback, cache them here
             if (this.gattCallback != null)
             {
-                this.gattCallback.ServicesDiscovered += (s, e) =>
-                {
-                    this.services = new List<IService>();
-
-                    if (this.gatt.Services != null)
-                    {
-                        var services = this.gatt.Services;
-                        foreach (var item in services)
-                        {
-                            this.services.Add(new Service(item, this.gatt, this.gattCallback));
-                        }
-                    }
-                    this.ServicesDiscovered(this, e);
-                };
+                this.gattCallback.ServicesDiscovered -= ServicesDiscoveredCallBack;
+                this.gattCallback.ServicesDiscovered += ServicesDiscoveredCallBack;
             }
+        }
+
+        private void ServicesDiscoveredCallBack(object se, EventArgs ea)
+        {
+            this.services = new List<IService>();
+
+            if (((BluetoothGatt)se).Services != null)
+            {
+                var services = ((BluetoothGatt)se).Services;
+                foreach (var item in services)
+                {
+                    this.services.Add(new Service(item, ((BluetoothGatt)se), this.gattCallback));
+                }
+            }
+
+            this.ServicesDiscovered(this, ea);
         }
 
         public override Guid ID
@@ -84,7 +88,9 @@ namespace Robotics.Mobile.Core.Bluetooth.LE
 		public override IList<IService> Services
 		{
 			get { return services; }
-		} protected IList<IService> services = new List<IService>();
+		}
+
+        protected IList<IService> services = new List<IService>();
 
 		#region public methods 
 
@@ -94,10 +100,11 @@ namespace Robotics.Mobile.Core.Bluetooth.LE
 		}
 
 		public void Disconnect ()
-		{
-			gatt?.Disconnect ();
-			gatt?.Dispose ();
-		}
+        {
+            gatt?.Close();
+            gatt?.Disconnect ();
+            gatt?.Dispose ();
+        }
 
 		#endregion
 

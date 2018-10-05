@@ -52,15 +52,34 @@ namespace Robotics.Mobile.Core.Bluetooth.LE
 
 			this.gattCallback.DeviceConnected += (object sender, DeviceConnectionEventArgs e) => 
             {
-				this.connectedDevices.Add ( e.Device);
+                bool existD = false;
+                foreach(IDevice d in connectedDevices)
+                {
+                    if (d.Name == e.Device.Name)
+                    {
+                        existD = true;
+                        break;
+                    }
+                }
+                if (!existD)
+                    this.connectedDevices.Add (e.Device);
+
 				this.DeviceConnected (this, e);
 			};
 
 			this.gattCallback.DeviceDisconnected += (object sender, DeviceConnectionEventArgs e) => {
-				// TODO: remove the disconnected device from the _connectedDevices list
-				// i don't think this will actually work, because i'm created a new underlying device here.
-				//if(this._connectedDevices.Contains(
-				this.DeviceDisconnected (this, e);
+                // TODO: remove the disconnected device from the _connectedDevices list
+                // i don't think this will actually work, because i'm created a new underlying device here.
+                //if(this._connectedDevices.Contains(
+                foreach (IDevice d in connectedDevices)
+                {
+                    if (d.Name == e.Device.Name)
+                    {
+                        connectedDevices.Remove(d);
+                        break;
+                    }
+                }
+                this.DeviceDisconnected (this, e);
 			};
 		}
 
@@ -137,7 +156,7 @@ namespace Robotics.Mobile.Core.Bluetooth.LE
 		public void DisconnectDevice (IDevice device)
 		{
 			((Device) device).Disconnect();
-		}
+        }
 
 	}
 }

@@ -30,9 +30,8 @@ namespace BLEExplorer.Pages
             _device = device;
 
             // when device is connected
-            adapter.DeviceConnected += AdapterDeviceConnected;
-
-            adapter.ConnectToDevice(device);
+            _adapter.DeviceConnected -= AdapterDeviceConnected;
+            _adapter.DeviceConnected += AdapterDeviceConnected;
 
             InitializeComponent();
 
@@ -44,33 +43,45 @@ namespace BLEExplorer.Pages
             btnStart.Clicked += BtnStart;
         }
 
-        void AdapterDeviceConnected(object sender, DeviceConnectionEventArgs e)
+        protected override void OnAppearing()
+        {
+            base.OnAppearing();
+
+            _adapter.ConnectToDevice(_device);
+        }
+
+        private void AdapterDeviceConnected(object sender, DeviceConnectionEventArgs e)
         {
             _device = e.Device; // do we need to overwrite this?
 
             // when services are discovered
-            _device.ServicesDiscovered += (object se, EventArgs ea) =>
-            {
-                Debug.WriteLine("device.ServicesDiscovered");
-               
-                _service = _device.Services.Where(x => x.ID == sguid).FirstOrDefault();
-
-                //get the characteristic for notify and write
-                characteristicNotify = _service.Characteristics.Where(x => x.ID == nguid).FirstOrDefault();
-
-                if (characteristicNotify.CanUpdate)
-                {
-                    characteristicNotify.ValueUpdated += CharacteristicValueUpdated;
-                    characteristicNotify.StartUpdates();
-                }
-
-                characteristicWrite =
-                    _service.Characteristics.Where(x => x.ID == wguid).FirstOrDefault();
-            };
+            _device.ServicesDiscovered -= ServicesDiscovered;
+            _device.ServicesDiscovered += ServicesDiscovered;
 
             // start looking for services
             _device.DiscoverServices();
         }
+
+        private void ServicesDiscovered(object se, EventArgs ea)
+        {
+            if (characteristicNotify == null || characteristicWrite == null)
+            {
+                Debug.WriteLine("device.ServicesDiscovered");
+
+                //_service = _device.Services.Where(x => x.ID == sguid).FirstOrDefault();
+                _service = ((IDevice)se).Services.Where(x => x.ID == sguid).FirstOrDefault();
+
+                //get the characteristic for notify and write
+                characteristicNotify = _service.Characteristics.Where(x => x.ID == nguid).FirstOrDefault();
+
+                StartUpdateHandler(characteristicNotify);
+
+                characteristicWrite =
+                    _service.Characteristics.Where(x => x.ID == wguid).FirstOrDefault();
+            }
+        }
+
+
         private void CharacteristicValueUpdated(object sender, CharacteristicReadEventArgs e)
         {
             string msg = string.Empty;
@@ -88,59 +99,61 @@ namespace BLEExplorer.Pages
 
         void BtnSendAny(object sender, System.EventArgs e)
         {
-            var data = System.Text.Encoding.UTF8.GetBytes(" ");
-
-            if (characteristicWrite.CanWrite)
-                characteristicWrite.Write(data);
+            WriteCharacteristicCmd(characteristicWrite, " ");
         }
 
         void BtnListData(object sender, System.EventArgs e)
         {
-            var data = System.Text.Encoding.UTF8.GetBytes("L");
-
-            if (characteristicWrite.CanWrite)
-                characteristicWrite.Write(data);
+            WriteCharacteristicCmd(characteristicWrite, "L");
         }
         void BtnExit(object sender, System.EventArgs e)
         {
-            var data = System.Text.Encoding.UTF8.GetBytes("X");
-
-            if (characteristicWrite.CanWrite)
-                characteristicWrite.Write(data);
+            WriteCharacteristicCmd(characteristicWrite, "X");
         }
 
         void BtnReset(object sender, System.EventArgs e)
         {
-            var data = System.Text.Encoding.UTF8.GetBytes("R");
-
-            if (characteristicWrite.CanWrite)
-                characteristicWrite.Write(data);
+            WriteCharacteristicCmd(characteristicWrite, "R");
         }
         void BtnStopReading(object sender, System.EventArgs e)
         {
-            if (characteristicNotify.CanUpdate)
-            {
-                characteristicNotify.StopUpdates();
-                characteristicNotify.ValueUpdated -= CharacteristicValueUpdated;
-            }
+            StopUpdateHandler(characteristicNotify);
         }
 
         void BtnStart(object sender, System.EventArgs e)
         {
-            if (characteristicNotify.CanUpdate)
-            {
-                characteristicNotify.StartUpdates();
-                characteristicNotify.ValueUpdated += CharacteristicValueUpdated;
-            }
+            StartUpdateHandler(characteristicNotify);
         }
 
         protected override void OnDisappearing()
         {
             base.OnDisappearing();
-            if (characteristicNotify.CanUpdate)
+            StopUpdateHandler(characteristicNotify);
+
+            _adapter.DisconnectDevice(_device);
+        }
+
+        private void WriteCharacteristicCmd(ICharacteristic icharacter, string cmd)
+        {
+            var data = System.Text.Encoding.UTF8.GetBytes(cmd);
+            if (icharacter.CanWrite)
+                icharacter.Write(data);
+        }
+        private void StartUpdateHandler(ICharacteristic icharacter)
+        {
+            if (icharacter.CanUpdate)
             {
-                characteristicNotify.StopUpdates();
-                characteristicNotify.ValueUpdated -= CharacteristicValueUpdated;
+                icharacter.StartUpdates();
+                icharacter.ValueUpdated -= CharacteristicValueUpdated;
+                icharacter.ValueUpdated += CharacteristicValueUpdated;
+            }
+        }
+        private void StopUpdateHandler(ICharacteristic icharacter)
+        {
+            if (icharacter.CanUpdate)
+            {
+                icharacter.StartUpdates();
+                icharacter.ValueUpdated -= CharacteristicValueUpdated;
             }
         }
     }

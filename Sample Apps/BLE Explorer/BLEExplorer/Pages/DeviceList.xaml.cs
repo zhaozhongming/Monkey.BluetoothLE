@@ -12,12 +12,6 @@ namespace BLEExplorer.Pages
     {
         IAdapter adapter;
         ObservableCollection<IDevice> devices;
-        IDevice device;
-        //ICharacteristic characteristicNotify;
-        //ObservableCollection<IService> services;
-        //IService service;
-
-
         //const string sid = "00031234-0000-1000-8000-00805F9B0130";
         //static readonly Guid sguid = new Guid(sid);
 

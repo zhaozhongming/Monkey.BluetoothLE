@@ -23,15 +23,11 @@ namespace Robotics.Mobile.Core.Bluetooth.LE
 			Console.WriteLine ("OnConnectionStateChange: ");
 			base.OnConnectionStateChange (gatt, status, newState);
 
-			//TODO: need to pull the cached RSSI in here, or read it (requires the callback)
-			Device device = new Device (gatt.Device, gatt, this, 0);
-
 			switch (newState) {
 			// disconnected
 			case ProfileState.Disconnected:
 				Console.WriteLine ("disconnected");
-				this.DeviceDisconnected (this, new DeviceConnectionEventArgs () { Device = device });
-				break;
+                break;
 				// connecting
 			case ProfileState.Connecting:
 				Console.WriteLine ("Connecting");
@@ -39,8 +35,27 @@ namespace Robotics.Mobile.Core.Bluetooth.LE
 				// connected
 			case ProfileState.Connected:
 				Console.WriteLine ("Connected");
-				this.DeviceConnected (this, new DeviceConnectionEventArgs () { Device = device });
-				break;
+                    //TODO: need to pull the cached RSSI in here, or read it (requires the callback)
+                    //Device device = new Device(gatt.Device, gatt, this, 0);
+                    bool found = false;
+                    IDevice dUse = null;
+                    foreach (IDevice d in _adapter.ConnectedDevices)
+                    {
+                        if (d.Name == gatt.Device.Name)
+                        {
+                            found = true;
+                            dUse = d;
+                            ((Device)dUse).gatt = gatt;
+                            ((Device)dUse).gattCallback = this;
+                            break;
+                        }
+                    }
+                    if (!found)
+                    {
+                        dUse = new Device(gatt.Device, gatt, this, 0);
+                    }
+                    this.DeviceConnected(this, new DeviceConnectionEventArgs() { Device = dUse });
+                    break;
 				// disconnecting
 			case ProfileState.Disconnecting:
 				Console.WriteLine ("Disconnecting");
@@ -53,8 +68,7 @@ namespace Robotics.Mobile.Core.Bluetooth.LE
 			base.OnServicesDiscovered (gatt, status);
 
 			Console.WriteLine ("OnServicesDiscovered: " + status.ToString ());
-
-			this.ServicesDiscovered (this, new ServicesDiscoveredEventArgs ());
+			this.ServicesDiscovered (gatt, new ServicesDiscoveredEventArgs ());
 		}
 
 		public override void OnDescriptorRead (BluetoothGatt gatt, BluetoothGattDescriptor descriptor, GattStatus status)
@@ -62,7 +76,6 @@ namespace Robotics.Mobile.Core.Bluetooth.LE
 			base.OnDescriptorRead (gatt, descriptor, status);
 
 			Console.WriteLine ("OnDescriptorRead: " + descriptor.ToString());
-
 		}
 
 		public override void OnCharacteristicRead (BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, GattStatus status)
